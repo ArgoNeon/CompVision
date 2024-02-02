@@ -40,11 +40,16 @@ def generate_noise(shape, mean, stddev):
 def add_noise(data, mean, stddev):
     noise = generate_noise(data.shape, mean, stddev)
     image_with_noise = cv2.add(data, noise)
+    write_in_csv('matrices/image_with_noise.csv', image_with_noise)
     return image_with_noise
 
-if __name__ == "__main__":
-    gray_image = cv2.imread('pictures/image_1.png', cv2.IMREAD_GRAYSCALE)
-    write_in_csv('matrices/image.csv', gray_image)
+def read_grayscale_image(image_file):
+    image = cv2.imread(image_file, cv2.IMREAD_GRAYSCALE)
+    write_in_csv('matrices/image.csv', image)
+    return image
+
+def generate_image_with_noise(image_file, noisy_image_file):
+    gray_image = read_grayscale_image(image_file)
 
     intensity_range = find_max_intensity(gray_image)
     medium_spot_intensity = find_medium_spot_intensity(gray_image)
@@ -56,6 +61,36 @@ if __name__ == "__main__":
     stddev = medium_spot_intensity // 3
 
     gray_image_with_noise = add_noise(gray_image, mean, stddev)
-    write_in_csv('matrices/image_with_noise.csv', gray_image_with_noise)
+    cv2.imwrite(noisy_image_file, gray_image_with_noise)
 
-    cv2.imwrite('pictures/noisy_img.png', gray_image_with_noise)
+if __name__ == "__main__":
+    generate_image_with_noise('pictures/image_1.png', 'pictures/noisy_image.png')
+
+    image = cv2.imread('pictures/noisy_image.png')
+    gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) 
+    aperture_size = 5
+    blur_image = cv2.medianBlur(gray_image, aperture_size)
+    cv2.imwrite('pictures/blur_image.png', blur_image)
+
+    low_threshold   = 7
+    high_threshold  = 50
+    canny_image = cv2.Canny(blur_image, low_threshold, high_threshold)
+    cv2.imwrite('pictures/canny_image.png', canny_image)
+    anchor = (5, 5)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, anchor)
+    closed_image = cv2.morphologyEx(canny_image, cv2.MORPH_CLOSE, kernel)
+    cv2.imwrite('pictures/closed_image.png', closed_image)
+
+    spot_contours = cv2.findContours(closed_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
+    for contours in spot_contours:
+        #сглаживание и определение количества углов
+        contour_perimeter = cv2.arcLength(contours, True)
+        epsilon = 0.02 * contour_perimeter
+        contour_approximation = cv2.approxPolyDP(contours, epsilon, True)
+        #выделение контуров
+
+        all_contours    = -1
+        green_color     = (0,255,0)
+        thickness       = 1
+        cv2.drawContours(image, [contour_approximation], all_contours, green_color, thickness)
+    cv2.imwrite('pictures/final_image.png', image)
