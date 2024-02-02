@@ -59,7 +59,7 @@ def generate_image_with_noise(image_file, noisy_image_file):
     gray_image_with_noise = add_noise(gray_image, mean, stddev)
     cv2.imwrite(noisy_image_file, gray_image_with_noise)
 
-def find_and_draw_contours(image_file, image_file_with_contours):
+def find_contours(image_file):
     image = cv2.imread(image_file)
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) 
 
@@ -77,12 +77,33 @@ def find_and_draw_contours(image_file, image_file_with_contours):
     closed_image = cv2.morphologyEx(canny_image, cv2.MORPH_CLOSE, kernel)
     #cv2.imwrite('pictures/closed_image.png', closed_image)
 
-    spot_contours = cv2.findContours(closed_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
+    contours = cv2.findContours(closed_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
+    return contours
+
+def draw_elliptic_contours(image_file, image_file_with_contours):
+    image = cv2.imread(image_file)
+    contours = find_contours(image_file)
     
-    for contours in spot_contours:
-        contour_perimeter = cv2.arcLength(contours, True)
+    for contour in contours:
+        contour_perimeter = cv2.arcLength(contour, True)
         epsilon = 0.02 * contour_perimeter
-        contour_approximation = cv2.approxPolyDP(contours, epsilon, True)
+        contour_approximation = cv2.approxPolyDP(contour, epsilon, True)
+        elliptic_contour = cv2.fitEllipse(contour_approximation)
+        
+        green_color     = (0,255,0)
+        thickness       = 1
+        cv2.ellipse(image, elliptic_contour, green_color, thickness)
+    cv2.imwrite(image_file_with_contours, image)
+
+def draw_contours(image_file, image_file_with_contours):
+    image = cv2.imread(image_file)
+    contours = find_contours(image_file)
+    
+    for contour in contours:
+        contour_perimeter = cv2.arcLength(contour, True)
+        epsilon = 0.02 * contour_perimeter
+        contour_approximation = cv2.approxPolyDP(contour, epsilon, True)
+
         all_contours    = -1
         green_color     = (0,255,0)
         thickness       = 1
@@ -92,4 +113,5 @@ def find_and_draw_contours(image_file, image_file_with_contours):
 if __name__ == "__main__":
     generate_image_with_noise('pictures/image_1.png', 'pictures/noisy_image.png')
 
-    find_and_draw_contours('pictures/noisy_image.png', 'pictures/image_with_contours.png')
+    draw_contours('pictures/noisy_image.png', 'pictures/image_with_contours.png')
+    draw_elliptic_contours('pictures/noisy_image.png', 'pictures/image_with_elliptic_contours.png')
