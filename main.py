@@ -64,12 +64,10 @@ def find_contours(image_file, low_threshold, high_threshold):
     image = cv2.imread(image_file)
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) 
 
-    aperture_size = 5
+    aperture_size = 7
     blur_image = cv2.medianBlur(gray_image, aperture_size)
     #cv2.imwrite('pictures/blur_image.png', blur_image)
 
-    low_threshold   = 7
-    high_threshold  = 50
     canny_image = cv2.Canny(blur_image, low_threshold, high_threshold)
     #cv2.imwrite('pictures/canny_image.png', canny_image)
 
@@ -82,9 +80,12 @@ def find_contours(image_file, low_threshold, high_threshold):
     return contours
 
 def draw_elliptic_contours(image_file, image_file_with_contours, medium_spot_intensity):
-    low_threshold   = medium_spot_intensity // 2.5
-    print('Low threshold for search: ', low_threshold)
-    high_threshold  = 50
+    low_threshold   = medium_spot_intensity * 1.0
+    high_threshold  = medium_spot_intensity * 2.0
+
+    if high_threshold > 255:
+        high_threshold = 255
+
     image = cv2.imread(image_file)
     contours = find_contours(image_file, low_threshold, high_threshold)
     
@@ -100,24 +101,6 @@ def draw_elliptic_contours(image_file, image_file_with_contours, medium_spot_int
             thickness       = 1
             cv2.ellipse(image, elliptic_contour_approximation, green_color, thickness)
     cv2.imwrite(image_file_with_contours, image)
-
-def refine_elliptic_contours(image_file, image_file_with_contours, refined_image_file_with_contours):
-    low_threshold   = 100
-    high_threshold  = 200
-    image = cv2.imread(image_file)
-    contours = find_contours(image_file_with_contours, low_threshold, high_threshold)
-    
-    for contour in contours:
-        contour_perimeter = cv2.arcLength(contour, True)
-        epsilon = 0.02 * contour_perimeter
-        contour_approximation = cv2.approxPolyDP(contour, epsilon, True)
-        if (len(contour_approximation) >= 5):
-            elliptic_contour_approximation = cv2.fitEllipse(contour_approximation)
-        
-            green_color     = (0,255,0)
-            thickness       = 1
-            cv2.ellipse(image, elliptic_contour_approximation, green_color, thickness)
-    cv2.imwrite(refined_image_file_with_contours, image)
 
 def draw_contours(image_file, image_file_with_contours):
     image = cv2.imread(image_file)
@@ -150,6 +133,3 @@ if __name__ == "__main__":
         draw_elliptic_contours( noisy_image_name,
                                 contoured_image_name,
                                 medium_spot_intensity)
-        #refine_elliptic_contours(   noisy_image_name,
-        #                            contoured_image_name,
-        #                            refined_image_name)
