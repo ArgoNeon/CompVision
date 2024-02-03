@@ -58,8 +58,9 @@ def generate_image_with_noise(image_file, noisy_image_file):
 
     gray_image_with_noise = add_noise(gray_image, mean, stddev)
     cv2.imwrite(noisy_image_file, gray_image_with_noise)
+    return medium_spot_intensity, intensity_range 
 
-def find_contours(image_file):
+def find_contours(image_file, low_threshold, high_threshold):
     image = cv2.imread(image_file)
     gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) 
 
@@ -72,7 +73,7 @@ def find_contours(image_file):
     canny_image = cv2.Canny(blur_image, low_threshold, high_threshold)
     #cv2.imwrite('pictures/canny_image.png', canny_image)
 
-    anchor = (5, 5)
+    anchor = (3, 3)
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, anchor)
     closed_image = cv2.morphologyEx(canny_image, cv2.MORPH_CLOSE, kernel)
     #cv2.imwrite('pictures/closed_image.png', closed_image)
@@ -80,20 +81,43 @@ def find_contours(image_file):
     contours = cv2.findContours(closed_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
     return contours
 
-def draw_elliptic_contours(image_file, image_file_with_contours):
+def draw_elliptic_contours(image_file, image_file_with_contours, medium_spot_intensity):
+    low_threshold   = medium_spot_intensity // 2.5
+    print('Low threshold for search: ', low_threshold)
+    high_threshold  = 50
     image = cv2.imread(image_file)
-    contours = find_contours(image_file)
+    contours = find_contours(image_file, low_threshold, high_threshold)
     
     for contour in contours:
         contour_perimeter = cv2.arcLength(contour, True)
         epsilon = 0.02 * contour_perimeter
         contour_approximation = cv2.approxPolyDP(contour, epsilon, True)
-        elliptic_contour = cv2.fitEllipse(contour_approximation)
+
+        if (len(contour_approximation) >= 5):
+            elliptic_contour_approximation = cv2.fitEllipse(contour_approximation)
         
-        green_color     = (0,255,0)
-        thickness       = 1
-        cv2.ellipse(image, elliptic_contour, green_color, thickness)
+            green_color     = (0,255,0)
+            thickness       = 1
+            cv2.ellipse(image, elliptic_contour_approximation, green_color, thickness)
     cv2.imwrite(image_file_with_contours, image)
+
+def refine_elliptic_contours(image_file, image_file_with_contours, refined_image_file_with_contours):
+    low_threshold   = 100
+    high_threshold  = 200
+    image = cv2.imread(image_file)
+    contours = find_contours(image_file_with_contours, low_threshold, high_threshold)
+    
+    for contour in contours:
+        contour_perimeter = cv2.arcLength(contour, True)
+        epsilon = 0.02 * contour_perimeter
+        contour_approximation = cv2.approxPolyDP(contour, epsilon, True)
+        if (len(contour_approximation) >= 5):
+            elliptic_contour_approximation = cv2.fitEllipse(contour_approximation)
+        
+            green_color     = (0,255,0)
+            thickness       = 1
+            cv2.ellipse(image, elliptic_contour_approximation, green_color, thickness)
+    cv2.imwrite(refined_image_file_with_contours, image)
 
 def draw_contours(image_file, image_file_with_contours):
     image = cv2.imread(image_file)
@@ -111,7 +135,21 @@ def draw_contours(image_file, image_file_with_contours):
     cv2.imwrite(image_file_with_contours, image)
 
 if __name__ == "__main__":
-    generate_image_with_noise('pictures/image_1.png', 'pictures/noisy_image.png')
 
-    draw_contours('pictures/noisy_image.png', 'pictures/image_with_contours.png')
-    draw_elliptic_contours('pictures/noisy_image.png', 'pictures/image_with_elliptic_contours.png')
+    for i in range(10):
+        start_image_name        = 'pictures/image_' + str(i) + '.png'
+        noisy_image_name        = 'pictures/noisy_image_' + str(i) + '.png'
+        contoured_image_name    = 'pictures/image_with_elliptic_contours_' + str(i) + '.png'
+        #refined_image_name      = 'pictures/refined_image_with_elliptic_contours_' + str(i) + '.png'
+
+        print('Image name: ', start_image_name)
+        medium_spot_intensity, intensity_range = generate_image_with_noise( start_image_name,
+                                                                            noisy_image_name)
+
+        #draw_contours('pictures/noisy_image.png', 'pictures/image_with_contours.png')
+        draw_elliptic_contours( noisy_image_name,
+                                contoured_image_name,
+                                medium_spot_intensity)
+        #refine_elliptic_contours(   noisy_image_name,
+        #                            contoured_image_name,
+        #                            refined_image_name)
