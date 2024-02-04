@@ -30,7 +30,22 @@ def find_medium_spot_intensity(data):
                 count += 1
                 summ += ipix
 
-    return summ // count
+    return summ / count
+
+def find_medium_image_intensity(image_file):
+    pix_min = 0
+    summ = 0
+    count = 0
+
+    gray_image = cv2.imread(image_file, cv2.IMREAD_GRAYSCALE)
+
+    for irow in gray_image:
+        for ipix in irow:
+            if pix_min < ipix:
+                count += 1
+                summ += ipix
+
+    return summ / count
 
 def generate_noise(shape, mean, stddev):
     noise = np.random.normal(mean, stddev, shape).astype(np.uint8)
@@ -49,9 +64,6 @@ def generate_image_with_noise(image_file, noisy_image_file):
 
     intensity_range = find_max_intensity(gray_image)
     medium_spot_intensity = find_medium_spot_intensity(gray_image)
-
-    print('Spot intensity range: ', intensity_range)
-    print('Medium spot intensity: ', medium_spot_intensity)
 
     mean = medium_spot_intensity
     stddev = medium_spot_intensity // 3
@@ -79,9 +91,9 @@ def find_contours(image_file, low_threshold, high_threshold):
     contours = cv2.findContours(closed_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]
     return contours
 
-def draw_elliptic_contours(image_file, image_file_with_contours, medium_spot_intensity):
-    low_threshold   = medium_spot_intensity * 1.0
-    high_threshold  = medium_spot_intensity * 2.0
+def draw_elliptic_contours(image_file, image_file_with_contours, medium_image_intensity):
+    low_threshold   = medium_image_intensity * 1.0
+    high_threshold  = medium_image_intensity * 2.0
 
     if high_threshold > 255:
         high_threshold = 255
@@ -122,14 +134,20 @@ if __name__ == "__main__":
     for i in range(10):
         start_image_name        = 'pictures/image_' + str(i) + '.png'
         noisy_image_name        = 'pictures/noisy_image_' + str(i) + '.png'
-        contoured_image_name    = 'pictures/image_with_elliptic_contours_' + str(i) + '.png'
+        contoured_image_name    = 'results/image_with_elliptic_contours_' + str(i) + '.png'
         #refined_image_name      = 'pictures/refined_image_with_elliptic_contours_' + str(i) + '.png'
 
         print('Image name: ', start_image_name)
         medium_spot_intensity, intensity_range = generate_image_with_noise( start_image_name,
                                                                             noisy_image_name)
 
+        print('Spot intensity range: ', intensity_range)
+        print('Medium spot intensity: ', f"{medium_spot_intensity:.2f}")
+
+        medium_image_intensity = find_medium_image_intensity(noisy_image_name)
+        print('Medium noisy image intensity: ', f"{medium_image_intensity:.2f}")
+
         #draw_contours('pictures/noisy_image.png', 'pictures/image_with_contours.png')
         draw_elliptic_contours( noisy_image_name,
                                 contoured_image_name,
-                                medium_spot_intensity)
+                                medium_image_intensity)
